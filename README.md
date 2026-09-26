@@ -2,7 +2,8 @@
 
 Flask + Python + SQLite sample project for **Xavier Ateneo ITCC 14**.
 
-A small JSON REST API for a `movies` resource. Use it to practice CRUD endpoints, validation, and SQLite.
+A small JSON REST API for a `movies` resource, plus a browser page that uses it.
+Use it to practice CRUD endpoints, validation, SQLite, and a first fullstack step: HTML that calls the API with `fetch`.
 
 ## How this maps to MVC
 
@@ -11,7 +12,7 @@ This sample is organized for lecture use around **Model–View–Controller**:
 | MVC piece | In this project | Job |
 |-----------|-----------------|-----|
 | **Model** | `models.py` (+ `movies.db`) | Schema, SQLite, CRUD helpers. No HTTP. |
-| **View** | JSON from `jsonify(...)` | What the client *sees*. No HTML UI yet — a future frontend is separate. |
+| **View** | JSON from `jsonify(...)` on `/movies`, and `templates/index.html` | Two views. The API View is JSON. The HTML View is the page in the browser. The page does not read the database. |
 | **Controller** | Route handlers in `app.py` | Read the request, validate, call the Model, choose status code, return JSON. |
 
 **Typical request flow (example: `POST /movies`):**
@@ -19,7 +20,18 @@ This sample is organized for lecture use around **Model–View–Controller**:
 1. Client sends HTTP + JSON body → Flask routes it to a function in `app.py` (**Controller**).
 2. Controller validates required fields (`title`, `year`, `genre`). Bad input → **400** (never touches the DB).
 3. Controller calls `create_movie(...)` in `models.py` (**Model**) to INSERT into SQLite.
-4. Controller returns `jsonify(movie)` with **201** — that JSON body is the **View** for this API.
+4. Controller returns `jsonify(movie)` with **201**.
+   That JSON body is the **API View**.
+
+**Browser path (the HTML page):**
+
+1. You open `http://127.0.0.1:5000`.
+   The Controller sees `Accept: text/html` and returns `templates/index.html` (HTML View).
+2. `static/app.js` runs `fetch("/movies")`.
+   That is a normal `GET /movies`, the same request as curl.
+3. The Controller and Model handle it as before and return JSON (API View).
+4. The script turns that JSON into list rows.
+   Create, edit, and delete are `POST`, `PUT`, and `DELETE` the same way.
 
 `seed.py` is starter data for demos (hand-crafted, not from an external movie API). It uses the same Model helpers as a real create request.
 
@@ -27,13 +39,16 @@ This sample is organized for lecture use around **Model–View–Controller**:
 
 ```
 movies-api/
-  app.py            # Controller: routes, validation, JSON responses (View)
-  models.py         # Model: SQLite schema + CRUD
-  seed.py           # Hand-crafted sample movies (demo data)
-  requirements.txt  # Python dependencies
-  README.md         # This file
+  app.py                 # Controller: routes, validation, JSON API View
+  models.py              # Model: SQLite schema + CRUD
+  seed.py                # Hand-crafted sample movies (demo data)
+  templates/index.html   # HTML View: page structure, no database access
+  static/app.js          # fetch() calls to the /movies JSON API
+  static/style.css       # page styling only
+  requirements.txt       # Python dependencies
+  README.md              # This file
   .gitignore
-  movies.db         # Created automatically on first run (gitignored)
+  movies.db              # Created automatically on first run (gitignored)
 ```
 
 ## Movie fields
@@ -71,9 +86,27 @@ python seed.py
 python app.py
 ```
 
-The API listens on **http://127.0.0.1:5000**.
+The server listens on **http://127.0.0.1:5000**.
 
 On first start, the app creates `movies.db`, builds the `movies` table, and seeds **14** original sample movies if the table is empty.
+
+## Open the UI
+
+With the server running, open **http://127.0.0.1:5000** in a browser.
+
+You get a page to list movies, open one, add, edit, and delete.
+The page does not read `movies.db` itself.
+`static/app.js` calls the JSON API with `fetch` (`GET`, `POST`, `PUT`, and `DELETE` on `/movies`).
+
+Open the site from the running server.
+Do not double-click `templates/index.html`.
+`fetch` only works on `http://127.0.0.1:5000`, where Flask serves the page.
+
+`/movies` is still JSON.
+The `curl` examples below work the same while the UI is open.
+
+`curl http://127.0.0.1:5000/` still returns the JSON welcome.
+A browser asks for HTML, so that same path shows the page.
 
 ## Endpoints
 
@@ -85,7 +118,9 @@ On first start, the app creates `movies.db`, builds the `movies` table, and seed
 | `PUT`    | `/movies/<id>`  | 200     | 400 / 404        |
 | `DELETE` | `/movies/<id>`  | 200     | 404 not found    |
 
-CORS is enabled via `flask-cors` so a future frontend can call the API from the browser.
+CORS stays on via `flask-cors`.
+The bundled page is same-origin, so it does not need CORS.
+A frontend on another origin can still call `/movies`.
 
 ---
 
@@ -203,7 +238,8 @@ Expected: `HTTP/1.1 404 NOT FOUND`.
 - Required fields on create/update: **title**, **year**, **genre**.
 - Optional fields: **director**, **rating** (1–10).
 - To reset the database, stop the server, delete `movies.db`, then run `python app.py` again (or `python seed.py`).
-- Keep responses as JSON only — no HTML templates in this sample.
+- The browser UI and the `curl` commands use the same `/movies` routes.
+- `/movies` stays JSON. HTML is only the page at `/` when a browser asks for it.
 
 ## License
 

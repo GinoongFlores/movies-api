@@ -11,35 +11,47 @@ MVC = Model–View–Controller. We split the app so each part has one job:
     - Creates the table, runs CRUD queries, returns plain Python dicts.
     - Knows NOTHING about HTTP, URLs, or status codes.
 
-  View (JSON responses — no HTML UI yet)
-    - In a classic web app, the View is HTML templates the browser paints.
-    - Here the "client" is often Postman, curl, or a future React/Vue app.
-    - So our View is simply JSON: jsonify(...) is what the client *sees*.
-    - Later you can add a real frontend; the API View stays JSON.
+  View (two of them, on purpose)
+    - API View: JSON from jsonify(...) on the /movies routes.
+      curl, Postman, and the browser's fetch() all see this.
+      Those routes stay JSON. They do not render HTML.
+    - HTML View: templates/index.html (styled by static/style.css).
+      A browser paints this. It does not query SQLite.
+      static/app.js calls the JSON API with fetch(). That script is
+      the frontend talking to the same REST routes as curl.
+    - In a classic server-rendered app, the route builds the HTML from
+      the database. Here the page is a client of the API. That is the
+      fullstack step: same Controller and Model, a second View.
 
   Controller (this file — app.py)
     - Route handlers receive the HTTP request.
     - They validate input, call the Model, pick the status code, and
-      return JSON (the View).
+      return JSON (the API View).
     - Example flow for POST /movies:
         request JSON → validate → create_movie() → jsonify + 201
 
 Why separate them?
   - Students can change the database without rewriting every route.
   - Students can add a frontend later without rewriting models.py.
+    The HTML page does that: models.py is unchanged.
   - Easier to test and to explain in class: "Controller talks HTTP;
-    Model talks SQLite; View is the JSON body."
+    Model talks SQLite; the API View is the JSON body; the HTML View
+    is the page that calls that API."
 
-Endpoints:
+Endpoints (JSON API, unchanged):
   GET    /movies
   GET    /movies/<id>
   POST   /movies
   PUT    /movies/<id>
   DELETE /movies/<id>
+
+Browser UI:
+  GET    /     HTML when the client prefers text/html (see index())
+               curl without that Accept header still gets JSON
 ==============================================================================
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 
 # Model layer — all database work lives in models.py (not here).
@@ -60,8 +72,10 @@ from seed import seed
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 
-# flask-cors lets a future frontend on another origin call this API.
-# Optional for curl/Postman; useful when you add HTML/JS later.
+# flask-cors lets a page on another origin call this API.
+# The HTML UI in templates/ is served by this same Flask app (same origin),
+# so it does not need CORS. CORS stays on for a separate frontend later.
+# Optional for curl/Postman.
 CORS(app)
 
 
@@ -139,14 +153,31 @@ def validate_movie_payload(data):
 
 # ===========================================================================
 # ROUTES = Controller actions
-# Each function: read request → (validate) → call Model → return JSON + code
-# jsonify(...) is our thin View layer for this API.
+# /movies: read request → (validate) → call Model → return JSON + code.
+# jsonify(...) is the API View for those routes.
+# GET / is the exception for browsers: it returns the HTML View and does
+# not call the Model. The page's JavaScript calls /movies itself.
 # ===========================================================================
 
 
 @app.get("/")
 def index():
-    """Welcome / health check — helps students confirm the server is up."""
+    """
+    GET / : HTML page for browsers, JSON welcome for API clients.
+
+    A browser navigation sends Accept: text/html at a higher quality than
+    JSON, so we render templates/index.html (HTML View). That template
+    does not touch the database. static/app.js loads data with fetch()
+    against the /movies routes below (API View).
+
+    curl's default Accept is */*, so text/html and application/json tie.
+    On a tie we keep the original JSON welcome. /movies is always JSON.
+    """
+    html_quality = request.accept_mimetypes["text/html"]
+    json_quality = request.accept_mimetypes["application/json"]
+    if html_quality > json_quality:
+        return render_template("index.html")
+
     return jsonify(
         {
             "message": "Movies API — Xavier Ateneo ITCC 14 sample",

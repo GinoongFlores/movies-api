@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movies</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!--
+    HTML View: what the browser paints.
+
+    This file is not the API View. The /movies routes still return JSON
+    from jsonify() in app.py (the Controller). This template does not
+    query SQLite and does not import the Model (models.py).
+
+    static/app.js uses fetch() to call that JSON API. Those calls are
+    the same GET / POST / PUT / DELETE /movies routes you can hit with curl.
+  -->
+  <header class="top">
+    <div class="wrap top-inner">
+      <div>
+        <p class="eyebrow">ITCC 14 · Xavier Ateneo</p>
+        <h1>Movies</h1>
+      </div>
+      <p class="lede">List, open, add, edit, and delete movies. This page calls the REST API. It does not read the database itself.</p>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <section aria-labelledby="library-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="library-heading">Library</h2>
+          <p id="list-status" class="hint" aria-live="polite">Loading movies…</p>
+        </div>
+        <button id="add-btn" class="btn" type="button">Add movie</button>
+      </div>
+      <ul id="movie-list" class="catalog"></ul>
+    </section>
+
+    <aside id="panel" class="panel" aria-live="polite">
+      <p class="panel-empty">Select a movie, or add one. <code>static/app.js</code> fills this panel after it calls <code>/movies</code>.</p>
+    </aside>
+  </main>
+
+  <footer class="wrap lesson">
+    <details>
+      <summary>How this page fits MVC</summary>
+      <p>The Model (<code>models.py</code>) talks to SQLite. This page never imports it.</p>
+      <p>The Controller (<code>app.py</code>) still owns <code>/movies</code> and returns JSON.</p>
+      <p>There are two Views. This HTML is the browser View. <code>jsonify(...)</code> is the API View.</p>
+      <p><code>static/app.js</code> is the frontend talking to the REST API with <code>fetch</code>. It paints the JSON into the list.</p>
+    </details>
+  </footer>
+
+  <template id="card-template">
+    <li>
+      <button type="button" class="row" data-id>
+        <span class="rating" data-field="rating"></span>
+        <span class="row-body">
+          <span class="row-title" data-field="title"></span>
+          <span class="row-meta" data-field="meta"></span>
+        </span>
+      </button>
+    </li>
+  </template>
+
+  <template id="detail-template">
+    <article class="detail">
+      <p class="route" data-field="route"></p>
+      <h2 data-field="title" tabindex="-1"></h2>
+      <p class="meta">
+        <span data-field="genre"></span>
+        <span data-field="year"></span>
+      </p>
+      <dl>
+        <div>
+          <dt>Director</dt>
+          <dd data-field="director"></dd>
+        </div>
+        <div>
+          <dt>Rating</dt>
+          <dd data-field="rating"></dd>
+        </div>
+        <div>
+          <dt>Id</dt>
+          <dd data-field="id"></dd>
+        </div>
+      </dl>
+      <p class="ok" data-field="status" hidden></p>
+      <p class="error" data-field="error" hidden></p>
+      <div class="actions">
+        <button type="button" class="btn" data-action="edit">Edit</button>
+        <button type="button" class="btn danger" data-action="delete">Delete</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="form-template">
+    <form id="movie-form" autocomplete="off">
+      <p class="route" data-field="route"></p>
+      <h2 data-field="heading" tabindex="-1"></h2>
+      <p class="hint">Required: title, year, genre. The API returns 400 if those are missing or invalid.</p>
+      <label>
+        Title
+        <input name="title" type="text" required>
+      </label>
+      <label>
+        Year
+        <input name="year" type="number" inputmode="numeric" required min="1888" max="2100" step="1">
+      </label>
+      <label>
+        Genre
+        <input name="genre" type="text" required>
+      </label>
+      <label>
+        Director <span class="optional">optional</span>
+        <input name="director" type="text">
+      </label>
+      <label>
+        Rating <span class="optional">optional, 1-10</span>
+        <input name="rating" type="number" inputmode="decimal" min="1" max="10" step="0.1">
+      </label>
+      <p class="error" data-field="error" hidden></p>
+      <div class="actions">
+        <button type="submit" class="btn">Save movie</button>
+        <button type="button" class="btn secondary" data-action="cancel">Cancel</button>
+      </div>
+    </form>
+  </template>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
