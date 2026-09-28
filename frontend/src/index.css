@@ -1,4 +1,4 @@
-/* Presentation only. No API calls in this file. */
+/* Same look as static/style.css so the React page and the vanilla twin are easy to compare. No API calls here. */
 
 :root {
   color-scheme: light;

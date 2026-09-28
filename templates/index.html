@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Movies</title>
+  <title>Movies (vanilla)</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <!--
-    HTML View: what the browser paints.
+    Vanilla twin (GET /vanilla). The main demo is frontend/ (React).
 
     This file is not the API View. The /movies routes still return JSON
     from jsonify() in app.py (the Controller). This template does not
@@ -16,14 +16,15 @@
 
     static/app.js uses fetch() to call that JSON API. Those calls are
     the same GET / POST / PUT / DELETE /movies routes you can hit with curl.
+    React components in frontend/src/components/ call those same routes.
   -->
   <header class="top">
     <div class="wrap top-inner">
       <div>
-        <p class="eyebrow">ITCC 14 · Xavier Ateneo</p>
+        <p class="eyebrow">ITCC 14 · Vanilla twin</p>
         <h1>Movies</h1>
       </div>
-      <p class="lede">List, open, add, edit, and delete movies. This page calls the REST API. It does not read the database itself.</p>
+      <p class="lede">One HTML file and <code>static/app.js</code>. The main demo is the <a href="http://127.0.0.1:5173">React app</a>. This page still calls <code>/movies</code> with <code>fetch</code>.</p>
     </div>
   </header>
 
@@ -47,10 +48,11 @@
   <footer class="wrap lesson">
     <details>
       <summary>How this page fits MVC</summary>
+      <p>This is the vanilla twin. The main demo is the React app in <code>frontend/</code>.</p>
       <p>The Model (<code>models.py</code>) talks to SQLite. This page never imports it.</p>
       <p>The Controller (<code>app.py</code>) still owns <code>/movies</code> and returns JSON.</p>
-      <p>There are two Views. This HTML is the browser View. <code>jsonify(...)</code> is the API View.</p>
-      <p><code>static/app.js</code> is the frontend talking to the REST API with <code>fetch</code>. It paints the JSON into the list.</p>
+      <p><code>static/app.js</code> is one script. It calls <code>fetch</code>, then fills this HTML.</p>
+      <p>In React that job is split into <code>MovieList</code>, <code>MovieDetail</code>, and <code>MovieForm</code>.</p>
     </details>
   </footer>
 

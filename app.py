@@ -11,17 +11,21 @@ MVC = Model–View–Controller. We split the app so each part has one job:
     - Creates the table, runs CRUD queries, returns plain Python dicts.
     - Knows NOTHING about HTTP, URLs, or status codes.
 
-  View (two of them, on purpose)
+  View (the API stays JSON; browsers are clients of that API)
     - API View: JSON from jsonify(...) on the /movies routes.
-      curl, Postman, and the browser's fetch() all see this.
+      curl, Postman, Bruno, and the browser's fetch() all see this.
       Those routes stay JSON. They do not render HTML.
-    - HTML View: templates/index.html (styled by static/style.css).
-      A browser paints this. It does not query SQLite.
-      static/app.js calls the JSON API with fetch(). That script is
-      the frontend talking to the same REST routes as curl.
-    - In a classic server-rendered app, the route builds the HTML from
-      the database. Here the page is a client of the API. That is the
-      fullstack step: same Controller and Model, a second View.
+    - React UI (main class demo): frontend/ , run with Vite on port 5173.
+      MovieList, MovieDetail, and MovieForm call the JSON API with fetch().
+      That origin is different from this server, so the browser uses CORS.
+    - Vanilla HTML twin: templates/index.html at GET /vanilla
+      (styled by static/style.css). static/app.js is one file doing the
+      same fetch() calls. Same origin as Flask, so CORS is not required.
+    - GET / in a browser is only a short pointer to those two UIs.
+      curl GET / still gets the JSON welcome.
+    - None of the browser pages query SQLite. The Model is unchanged.
+    - In a classic server-rendered app, the route builds HTML from the
+      database. Here every UI is a client of the API.
 
   Controller (this file — app.py)
     - Route handlers receive the HTTP request.
@@ -33,10 +37,10 @@ MVC = Model–View–Controller. We split the app so each part has one job:
 Why separate them?
   - Students can change the database without rewriting every route.
   - Students can add a frontend later without rewriting models.py.
-    The HTML page does that: models.py is unchanged.
+    The React app and the vanilla page both do that: models.py is unchanged.
   - Easier to test and to explain in class: "Controller talks HTTP;
-    Model talks SQLite; the API View is the JSON body; the HTML View
-    is the page that calls that API."
+    Model talks SQLite; the API View is the JSON body; React components
+    and the vanilla page are clients that call that API."
 
 Endpoints (JSON API, unchanged):
   GET    /movies
@@ -46,7 +50,9 @@ Endpoints (JSON API, unchanged):
   DELETE /movies/<id>
 
 Browser UI:
-  GET    /     HTML when the client prefers text/html (see index())
+  React demo   http://127.0.0.1:5173     npm run dev, from frontend/
+  Vanilla twin GET /vanilla              templates/index.html + static/app.js
+  GET /        HTML pointer when the client prefers text/html
                curl without that Accept header still gets JSON
 ==============================================================================
 """
@@ -73,9 +79,10 @@ from seed import seed
 app = Flask(__name__)
 
 # flask-cors lets a page on another origin call this API.
-# The HTML UI in templates/ is served by this same Flask app (same origin),
-# so it does not need CORS. CORS stays on for a separate frontend later.
-# Optional for curl/Postman.
+# The React demo is Vite at http://127.0.0.1:5173. This API is port 5000.
+# Those are different origins, so the browser sends a CORS preflight on
+# POST/PUT. flask-cors answers it. The vanilla page at /vanilla is served
+# by this same app, so it does not need CORS. Optional for curl/Postman.
 CORS(app)
 
 
@@ -155,28 +162,36 @@ def validate_movie_payload(data):
 # ROUTES = Controller actions
 # /movies: read request → (validate) → call Model → return JSON + code.
 # jsonify(...) is the API View for those routes.
-# GET / is the exception for browsers: it returns the HTML View and does
-# not call the Model. The page's JavaScript calls /movies itself.
+# GET / and GET /vanilla do not call the Model.
+# React (port 5173) and static/app.js call /movies themselves.
 # ===========================================================================
+
+
+def client_wants_html():
+    """True for a normal browser navigation, false for curl's default Accept.
+
+    Browsers send Accept: text/html at quality 1.0, higher than JSON.
+    curl sends Accept: */*, so text/html and application/json tie.
+    On a tie we keep the original JSON welcome. /movies is always JSON.
+    """
+    html_quality = request.accept_mimetypes["text/html"]
+    json_quality = request.accept_mimetypes["application/json"]
+    return html_quality > json_quality
 
 
 @app.get("/")
 def index():
     """
-    GET / : HTML page for browsers, JSON welcome for API clients.
+    GET / : short HTML pointer for browsers, JSON welcome for API clients.
 
-    A browser navigation sends Accept: text/html at a higher quality than
-    JSON, so we render templates/index.html (HTML View). That template
-    does not touch the database. static/app.js loads data with fetch()
-    against the /movies routes below (API View).
+    A browser gets templates/home.html. That page does not list movies.
+    It points at the React demo (http://127.0.0.1:5173) and at /vanilla.
 
-    curl's default Accept is */*, so text/html and application/json tie.
-    On a tie we keep the original JSON welcome. /movies is always JSON.
+    curl's default Accept ties HTML and JSON, so this still returns the
+    same JSON welcome as before. /movies routes always return JSON.
     """
-    html_quality = request.accept_mimetypes["text/html"]
-    json_quality = request.accept_mimetypes["application/json"]
-    if html_quality > json_quality:
-        return render_template("index.html")
+    if client_wants_html():
+        return render_template("home.html")
 
     return jsonify(
         {
@@ -190,6 +205,18 @@ def index():
             },
         }
     )
+
+
+@app.get("/vanilla")
+def vanilla_page():
+    """
+    GET /vanilla: the vanilla HTML/JS twin of the React demo.
+
+    templates/index.html is structure only. static/app.js calls /movies
+    with fetch(), the same routes curl and the React components use.
+    This route does not call the Model and does not return movie JSON.
+    """
+    return render_template("index.html")
 
 
 @app.get("/movies")

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movies API</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!--
+    Not a movie UI. Browsers that open GET / land here.
+    The movie screens are the React app (port 5173) and /vanilla.
+    curl GET / does not see this file. It still gets JSON. See index() in app.py.
+  -->
+  <header class="top">
+    <div class="wrap top-inner">
+      <div>
+        <p class="eyebrow">ITCC 14 · Xavier Ateneo</p>
+        <h1>Movies API</h1>
+      </div>
+      <p class="lede">The main browser demo is the React app. This server is the JSON API on port 5000.</p>
+    </div>
+  </header>
+  <main class="wrap lesson">
+    <h2>Open the React demo</h2>
+    <ol class="steps">
+      <li>Keep this API running: <code>python app.py</code> (port 5000).</li>
+      <li>In another terminal: <code>cd frontend</code>, then <code>npm install</code>, then <code>npm run dev</code>.</li>
+      <li>Open <a href="http://127.0.0.1:5173">http://127.0.0.1:5173</a>.</li>
+    </ol>
+    <p>React runs on port 5173. Flask stays on port 5000. Those are different origins, so the browser uses CORS. <code>flask-cors</code> in <code>app.py</code> allows the React page to call <code>/movies</code>.</p>
+    <p>Compare with the <a href="{{ url_for('vanilla_page') }}">vanilla HTML/JS twin</a>. Same <code>/movies</code> routes. One HTML file and one script, instead of components.</p>
+    <p><code>curl</code> to <code>/movies</code> still returns JSON. This HTML is only what a browser gets for <code>GET /</code>.</p>
+  </main>
+</body>
+</html>

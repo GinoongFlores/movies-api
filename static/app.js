@@ -1,5 +1,8 @@
 /*
-  Frontend for the Movies REST API.
+  Vanilla twin for the Movies REST API (served at /vanilla).
+
+  The main class demo is the React app in frontend/ (Vite, port 5173).
+  This file is the same CRUD in one script, so you can compare.
 
   This file is not the Controller and not the Model.
     Controller  app.py       /movies routes still return JSON.
@@ -7,12 +10,8 @@
     API View    jsonify()    What fetch() receives.
     HTML View   index.html   Page structure. This script fills it in.
 
-  fetch() is this page talking to the same routes as curl:
-    GET    /movies
-    GET    /movies/<id>
-    POST   /movies
-    PUT    /movies/<id>
-    DELETE /movies/<id>
+  fetch() here uses relative /movies because this page is served by Flask.
+  The React app calls the same routes on http://127.0.0.1:5000 (other port).
 */
 
 const listEl = document.querySelector("#movie-list");
