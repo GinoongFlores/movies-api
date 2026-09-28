@@ -2,7 +2,73 @@
 
 Flask + Python + SQLite sample project for **Xavier Ateneo ITCC 14**.
 
-A small JSON REST API for a `movies` resource. Use it to practice CRUD endpoints, validation, and SQLite.
+A small JSON REST API for a `movies` resource.
+The main browser demo is a React app that calls it with `fetch`.
+A vanilla HTML/JS page does the same CRUD so you can compare.
+
+`curl`, Bruno, and Postman still talk to JSON `/movies`.
+The browser pages do not read `movies.db`.
+
+## Run the React demo
+
+Use two terminals. Both stay open during class.
+
+```bash
+cd movies-api
+
+# Terminal 1: the API
+python3 -m venv .venv
+source .venv/bin/activate
+# Windows (PowerShell): .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python app.py
+```
+
+The API listens on **http://127.0.0.1:5000**.
+
+On first start it creates `movies.db` and seeds **14** sample movies if the table is empty.
+
+```bash
+# Terminal 2: the React UI
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://127.0.0.1:5173**.
+
+You get a page to list movies, open one, add, edit, and delete.
+React is on port 5173. Flask is on port 5000.
+Those are different origins, so the browser applies CORS.
+`flask-cors` in `app.py` allows the React page to call `/movies`.
+
+If the API is not on `http://127.0.0.1:5000`, set `VITE_API_URL` before `npm run dev`.
+Do not open the React files from disk. `fetch` needs both servers running.
+
+## Why React components for an API UI
+
+Components split the screen into pieces that each draw one thing.
+The API does not change. Every action is still `fetch` to `/movies`.
+`App.jsx` asks for data. `MovieList`, `MovieDetail`, and `MovieForm` only render what they are given.
+The vanilla twin does that same job in one script that both calls the API and rewrites the page.
+
+- React: one component per piece of the screen. The `fetch` calls sit in `App.jsx`.
+- Vanilla: `templates/index.html` plus `static/app.js`. That script finds nodes and fills them after each response.
+- Both talk only to the JSON API. Neither imports `models.py`.
+
+## Vanilla twin
+
+With the API running, open **http://127.0.0.1:5000/vanilla**.
+
+Same list, detail, create, edit, and delete.
+`static/app.js` calls relative `/movies` because Flask serves that page on port 5000.
+Same origin, so that page does not need CORS.
+
+A browser that opens **http://127.0.0.1:5000/** sees a short pointer to the React app and to `/vanilla`.
+It does not list movies.
+
+`curl http://127.0.0.1:5000/` still returns the JSON welcome.
+`curl` to `/movies` is unchanged. See the examples below.
 
 ## How this maps to MVC
 
@@ -11,7 +77,7 @@ This sample is organized for lecture use around **Model–View–Controller**:
 | MVC piece | In this project | Job |
 |-----------|-----------------|-----|
 | **Model** | `models.py` (+ `movies.db`) | Schema, SQLite, CRUD helpers. No HTTP. |
-| **View** | JSON from `jsonify(...)` | What the client *sees*. No HTML UI yet — a future frontend is separate. |
+| **View** | JSON from `jsonify(...)` on `/movies`. React components and `/vanilla` are clients of that JSON. | The API View stays JSON. Browser UIs call it. They do not read the database. |
 | **Controller** | Route handlers in `app.py` | Read the request, validate, call the Model, choose status code, return JSON. |
 
 **Typical request flow (example: `POST /movies`):**
@@ -19,7 +85,21 @@ This sample is organized for lecture use around **Model–View–Controller**:
 1. Client sends HTTP + JSON body → Flask routes it to a function in `app.py` (**Controller**).
 2. Controller validates required fields (`title`, `year`, `genre`). Bad input → **400** (never touches the DB).
 3. Controller calls `create_movie(...)` in `models.py` (**Model**) to INSERT into SQLite.
-4. Controller returns `jsonify(movie)` with **201** — that JSON body is the **View** for this API.
+4. Controller returns `jsonify(movie)` with **201**.
+   That JSON body is the **API View**.
+
+**Browser path (React, the main demo):**
+
+1. You open `http://127.0.0.1:5173`.
+   Vite serves the React page. Flask is not rendering that HTML.
+2. `App.jsx` runs `fetch("http://127.0.0.1:5000/movies")`.
+   That is a normal `GET /movies`, the same request as curl, from another port.
+3. The Controller and Model handle it as before and return JSON (API View).
+   CORS lets the browser read that response.
+4. `MovieList` turns that JSON into rows.
+   Create, edit, and delete are `POST`, `PUT`, and `DELETE` the same way.
+
+The vanilla page at `/vanilla` does steps 2 to 4 inside `static/app.js` instead of components.
 
 `seed.py` is starter data for demos (hand-crafted, not from an external movie API). It uses the same Model helpers as a real create request.
 
@@ -27,13 +107,23 @@ This sample is organized for lecture use around **Model–View–Controller**:
 
 ```
 movies-api/
-  app.py            # Controller: routes, validation, JSON responses (View)
-  models.py         # Model: SQLite schema + CRUD
-  seed.py           # Hand-crafted sample movies (demo data)
-  requirements.txt  # Python dependencies
-  README.md         # This file
+  app.py                         # Controller: routes, validation, JSON API View
+  models.py                      # Model: SQLite schema + CRUD
+  seed.py                        # Hand-crafted sample movies (demo data)
+  frontend/                      # React demo (Vite). Main UI students open.
+    src/App.jsx                  # fetch calls and screen state
+    src/api.js                   # fetch helper. API origin is port 5000.
+    src/components/MovieList.jsx
+    src/components/MovieDetail.jsx
+    src/components/MovieForm.jsx
+  templates/home.html            # Browser GET / : pointer to React and /vanilla
+  templates/index.html           # Vanilla twin, served at /vanilla
+  static/app.js                  # Vanilla fetch() calls, one file
+  static/style.css               # Shared look for the Flask pages
+  requirements.txt               # Python dependencies
+  README.md
   .gitignore
-  movies.db         # Created automatically on first run (gitignored)
+  movies.db                      # Created on first run (gitignored)
 ```
 
 ## Movie fields
@@ -47,34 +137,6 @@ movies-api/
 | `director` | string | no       | Optional             |
 | `rating`   | float  | no       | Between 1.0 and 10.0 |
 
-## Setup
-
-```bash
-cd movies-api
-
-# 1. Create a virtual environment
-python3 -m venv .venv
-
-# 2. Activate it
-# macOS / Linux:
-source .venv/bin/activate
-# Windows (PowerShell):
-# .venv\Scripts\Activate.ps1
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. (Optional) Seed manually — also happens automatically on first run
-python seed.py
-
-# 5. Run the server
-python app.py
-```
-
-The API listens on **http://127.0.0.1:5000**.
-
-On first start, the app creates `movies.db`, builds the `movies` table, and seeds **14** original sample movies if the table is empty.
-
 ## Endpoints
 
 | Method   | Path            | Success | Error cases      |
@@ -85,7 +147,9 @@ On first start, the app creates `movies.db`, builds the `movies` table, and seed
 | `PUT`    | `/movies/<id>`  | 200     | 400 / 404        |
 | `DELETE` | `/movies/<id>`  | 200     | 404 not found    |
 
-CORS is enabled via `flask-cors` so a future frontend can call the API from the browser.
+CORS stays on via `flask-cors`.
+The React app on port 5173 needs it.
+The vanilla page at `/vanilla` is same-origin and does not.
 
 ---
 
@@ -203,7 +267,10 @@ Expected: `HTTP/1.1 404 NOT FOUND`.
 - Required fields on create/update: **title**, **year**, **genre**.
 - Optional fields: **director**, **rating** (1–10).
 - To reset the database, stop the server, delete `movies.db`, then run `python app.py` again (or `python seed.py`).
-- Keep responses as JSON only — no HTML templates in this sample.
+- The React app, the vanilla page, and the `curl` commands use the same `/movies` routes.
+- `/movies` stays JSON.
+- Open the React demo at `http://127.0.0.1:5173`.
+  The vanilla twin is `http://127.0.0.1:5000/vanilla`.
 
 ## License
 
